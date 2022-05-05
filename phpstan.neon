@@ -1,0 +1,8 @@
+parameters:
+  level: 1
+  checkGenericClassInNonGenericObjectType: false
+  paths:
+    - src
+    - test
+  scanDirectories:
+    - vendor
