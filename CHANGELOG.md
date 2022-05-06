@@ -1,9 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2022-05-05
+## [Unreleased] - 2022-05-06
 
-Nothing yet.
+- clearify examples
+- refactor contract
 
 
 
