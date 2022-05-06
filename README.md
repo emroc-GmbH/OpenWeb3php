@@ -11,20 +11,14 @@ Easy interaction with the Ethereum and compatible blockchain ecosystem for PHP 8
 
 # Install
 
-Set minimum stability to dev
 ```
-"minimum-stability": "dev"
-```
-
-Then
-```
-composer require emroc/openweb3php dev-main
+composer require emroc/openweb3php ^0.2
 ```
 
 Or you can add this line in composer.json
 
 ```
-"emroc/openweb3php": "dev-main"
+"emroc/openweb3php": "^0.2"
 ```
 
 
@@ -104,7 +98,7 @@ web3
 ```php
 $web3->batch(true);
 $web3->clientVersion();
-$web3->hash('0x1234');
+$web3->hash('0x123456789');
 $web3->execute(function ($err, $data) {
     if ($err !== null) {
         // do something
@@ -171,25 +165,25 @@ use OpenWeb3\Contract;
 $contract = new Contract('http://localhost:8545', $abi);
 
 // deploy contract
-$contract->bytecode($bytecode)->new($params, $callback);
+$contract->bytecode($bytecode)->new($param1,$param2,..., $callback);
 
 // call contract function
-$contract->at($contractAddress)->call($functionName, $params, $callback);
+$contract->at($contractAddress)->call($functionName, $param1,$param2,..., $callback);
 
 // change function state
-$contract->at($contractAddress)->send($functionName, $params, $callback);
+$contract->at($contractAddress)->send($functionName, $param1,$param2,..., $callback);
 
 // estimate deploy contract gas
-$contract->bytecode($bytecode)->estimateGas($params, $callback);
+$contract->bytecode($bytecode)->estimateGas($param1,$param2,..., $callback);
 
 // estimate function gas
-$contract->at($contractAddress)->estimateGas($functionName, $params, $callback);
+$contract->at($contractAddress)->estimateGas($functionName, $param1,$param2,..., $callback);
 
 // get constructor data
-$constructorData = $contract->bytecode($bytecode)->getData($params);
+$constructorData = $contract->bytecode($bytecode)->getData($param1,$param2,...);
 
 // get function data
-$functionData = $contract->at($contractAddress)->getData($functionName, $params);
+$functionData = $contract->at($contractAddress)->getData($functionName, $param1,$param2,...);
 ```
 
 # Assign value to outside scope(from callback scope to outside scope)
