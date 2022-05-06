@@ -3,16 +3,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2022-05-06
 
+Nothing yet
+
+
+## [0.2.1] - 2022-05-06
 - added abiDecoder (thanks Halil Beycan)
 - implementation of Contract::getEventLogs() (thanks Nanolucas)
 - clearify examples
 - refactor contract
 
 
-
 ## [0.2.0] - 2022-05-05
-
-
 - phpstan added + fixes for level 1
 - dependencies updated to recent versions
 - phpseclib3 pow function implemented
