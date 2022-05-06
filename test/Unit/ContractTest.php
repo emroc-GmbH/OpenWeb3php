@@ -782,7 +782,7 @@ class ContractTest extends TestCase
     public function testDecodeMethodReturn()
     {
         $contract = $this->contract;
-        $contract->abi($this->testUserAbi);
+        $contract->initAbi($this->testUserAbi);
 
         if (!isset($this->accounts[0])) {
             $fromAccount = '0x407d73d8a49eeb85d32cf465507dd71d507100c1';

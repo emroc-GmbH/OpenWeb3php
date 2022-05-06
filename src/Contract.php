@@ -6,6 +6,7 @@
  * (c) Kuan-Cheng,Lai <alk03073135@gmail.com>
  * 
  * @author Peter Lai <alk03073135@gmail.com>
+ * @author Developer Team - emroc GmbH <devteam@emroc.gmbh>
  * @license MIT
  */
 
@@ -14,10 +15,7 @@ namespace OpenWeb3;
 use InvalidArgumentException;
 use OpenWeb3\Providers\Provider;
 use OpenWeb3\Providers\HttpProvider;
-use OpenWeb3\RequestManagers\RequestManager;
 use OpenWeb3\RequestManagers\HttpRequestManager;
-use OpenWeb3\Utils;
-use OpenWeb3\Eth;
 use OpenWeb3\Contracts\Ethabi;
 use OpenWeb3\Contracts\Types\Address;
 use OpenWeb3\Contracts\Types\Boolean;
@@ -32,89 +30,25 @@ use OpenWeb3\Validators\StringValidator;
 use OpenWeb3\Validators\TagValidator;
 use OpenWeb3\Validators\QuantityValidator;
 use OpenWeb3\Formatters\AddressFormatter;
+use stdClass;
+
 
 class Contract
 {
-    /**
-     * provider
-     *
-     * @var \OpenWeb3\Providers\Provider
-     */
-    protected $provider;
+    protected array $constructor = [];
+    protected array $events = [];
+    protected array $functions = [];
 
-    /**
-     * abi
-     * 
-     * @var array
-     */
-    protected $abi;
 
-    /**
-     * constructor
-     * 
-     * @var array
-     */
-    protected $constructor = [];
+    protected Eth $eth;
+    protected Ethabi $ethabi;
+    protected Provider $provider;
+    protected array $abi;
+    protected string $toAddress;
+    protected string $bytecode;
+    protected mixed $defaultBlock;
 
-    /**
-     * functions
-     * 
-     * @var array
-     */
-    protected $functions = [];
-
-    /**
-     * events
-     * 
-     * @var array
-     */
-    protected $events = [];
-
-    /**
-     * toAddress
-     * 
-     * @var string
-     */
-    protected $toAddress;
-
-    /**
-     * bytecode
-     * 
-     * @var string
-     */
-    protected $bytecode;
-
-    /**
-     * eth
-     * 
-     * @var \OpenWeb3\Eth
-     */
-    protected $eth;
-
-    /**
-     * ethabi
-     * 
-     * @var \OpenWeb3\Contracts\Ethabi
-     */
-    protected $ethabi;
-
-    /**
-     * defaultBlock
-     *
-     * @var mixed
-     */
-    protected $defaultBlock;
-
-    /**
-     * construct
-     *
-     * @param string|\OpenWeb3\Providers\Provider $provider
-     * @param string|\stdClass|array $abi
-     * @param mixed $defaultBlock
-     *
-     * @return void
-     */
-    public function __construct($provider, $abi, $defaultBlock = 'latest')
+    public function __construct( Provider|string $provider, array|string|stdClass $abi, string $defaultBlock = 'latest')
     {
         if (is_string($provider) && (filter_var($provider, FILTER_VALIDATE_URL) !== false)) {
             // check the uri schema
@@ -127,33 +61,13 @@ class Contract
             $this->provider = $provider;
         }
 
-        $abiArray = [];
-        if (is_string($abi)) {
-            $abiArray = json_decode($abi, true);
+        $this->initAbi($abi);
 
-            if (JSON_ERROR_NONE !== json_last_error()) {
-                throw new InvalidArgumentException('abi decode error: ' . json_last_error_msg());
-            }
-        } else {
-            $abiArray = Utils::jsonToArray($abi);
-        }
-        foreach ($abiArray as $item) {
-            if (isset($item['type'])) {
-                if ($item['type'] === 'function') {
-                    $this->functions[] = $item;
-                } elseif ($item['type'] === 'constructor') {
-                    $this->constructor = $item;
-                } elseif ($item['type'] === 'event') {
-                    $this->events[$item['name']] = $item;
-                }
-            }
-        }
         if (TagValidator::validate($defaultBlock) || QuantityValidator::validate($defaultBlock)) {
             $this->defaultBlock = $defaultBlock;
         } else {
             $this->$defaultBlock = 'latest';
         }
-        $this->abi = $abiArray;
         $this->eth = new Eth($this->provider);
         $this->ethabi = new Ethabi([
             'address' => new Address,
@@ -166,30 +80,7 @@ class Contract
         ]);
     }
 
-    /**
-     * call
-     * 
-     * @param string $name
-     * @param array $arguments
-     * @return void
-     */
-    // public function __call($name, $arguments)
-    // {
-    //     if (empty($this->provider)) {
-    //         throw new \RuntimeException('Please set provider first.');
-    //     }
-    //     $class = explode('\\', get_class());
-    //     if (preg_match('/^[a-zA-Z0-9]+$/', $name) === 1) {
-    //     }
-    // }
-
-    /**
-     * get
-     * 
-     * @param string $name
-     * @return mixed
-     */
-    public function __get($name)
+    public function __get(string $name)
     {
         $method = 'get' . ucfirst($name);
 
@@ -199,41 +90,27 @@ class Contract
         return false;
     }
 
-    /**
-     * set
-     * 
-     * @param string $name
-     * @param mixed $value
-     * @return mixed
-     */
-    public function __set($name, $value)
+    public function __set(string $name, mixed $value)
     {
         $method = 'set' . ucfirst($name);
 
         if (method_exists($this, $method)) {
-            return call_user_func_array([$this, $method], [$value]);
+            return $this->$method( $value );
         }
         return false;
     }
 
-    /**
-     * getProvider
-     * 
-     * @return \OpenWeb3\Providers\Provider
-     */
-    public function getProvider()
+    public function __isset( string $name ): bool
+    {
+        return false !== $this->__get($name);
+    }
+
+    public function getProvider():Provider
     {
         return $this->provider;
     }
 
-    /**
-     * setProvider
-     *
-     * @param \OpenWeb3\Providers\Provider $provider
-     *
-     * @return $this
-     */
-    public function setProvider($provider)
+    public function setProvider($provider):self
     {
         if ($provider instanceof Provider) {
             $this->provider = $provider;
@@ -241,23 +118,12 @@ class Contract
         return $this;
     }
 
-    /**
-     * getDefaultBlock
-     * 
-     * @return string
-     */
-    public function getDefaultBlock()
+    public function getDefaultBlock():string
     {
         return $this->defaultBlock;
     }
 
-    /**
-     * setDefaultBlock
-     *
-     * @param mixed $defaultBlock
-     * @return $this
-     */
-    public function setDefaultBlock($defaultBlock)
+    public function setDefaultBlock($defaultBlock):self
     {
         if (TagValidator::validate($defaultBlock) || QuantityValidator::validate($defaultBlock)) {
             $this->defaultBlock = $defaultBlock;
@@ -267,114 +133,59 @@ class Contract
         return $this;
     }
 
-    /**
-     * getFunctions
-     *
-     * @return array
-     */
-    public function getFunctions()
+    public function getFunctions(): array
     {
         return $this->functions;
     }
 
-    /**
-     * getEvents
-     *
-     * @return array
-     */
-    public function getEvents()
+    public function getEvents(): array
     {
         return $this->events;
     }
 
-    /**
-     * @return string
-     */
-    public function getToAddress()
+    public function getToAddress(): string
     {
         return $this->toAddress;
     }
 
-    /**
-     * getConstructor
-     *
-     * @return array
-     */
-    public function getConstructor()
+    public function getConstructor(): array
     {
         return $this->constructor;
     }
 
-    /**
-     * getAbi
-     *
-     * @return array
-     */
-    public function getAbi()
+    public function getAbi(): array
     {
         return $this->abi;
     }
 
-    /**
-     * setAbi
-     * 
-     * @param string $abi
-     * @return $this
-     */
-    public function setAbi($abi)
+    public function setAbi(array|string|stdClass $abi):self
     {
-        return $this->abi($abi);
+        return $this->initAbi($abi);
     }
 
-    /**
-     * getEthabi
-     * 
-     * @return array
-     */
-    public function getEthabi()
+    public function getEthabi(): Ethabi
     {
         return $this->ethabi;
     }
 
-    /**
-     * getEth
-     *
-     * @return \OpenWeb3\Eth
-     */
-    public function getEth()
+    public function getEth(): Eth
     {
         return $this->eth;
     }
 
-    /**
-     * setBytecode
-     * 
-     * @param string $bytecode
-     * @return $this
-     */
-    public function setBytecode($bytecode)
+    public function setBytecode(string $bytecode):self
+
     {
         return $this->bytecode($bytecode);
     }
 
-    /**
-     * setToAddress
-     * 
-     * @param string $bytecode
-     * @return $this
-     */
-    public function setToAddress($address)
+    public function setToAddress(string $address):self
+
     {
         return $this->at($address);
     }
 
-    /**
-     * at
-     * 
-     * @param string $address
-     * @return $this
-     */
-    public function at($address)
+    public function at(string $address):self
     {
         if (AddressValidator::validate($address) === false) {
             throw new InvalidArgumentException('Please make sure address is valid.');
@@ -384,13 +195,7 @@ class Contract
         return $this;
     }
 
-    /**
-     * bytecode
-     * 
-     * @param string $bytecode
-     * @return $this
-     */
-    public function bytecode($bytecode)
+    public function bytecode(string $bytecode):self
     {
         if (HexValidator::validate($bytecode) === false) {
             throw new InvalidArgumentException('Please make sure bytecode is valid.');
@@ -400,13 +205,7 @@ class Contract
         return $this;
     }
 
-    /**
-     * abi
-     * 
-     * @param string $abi
-     * @return $this
-     */
-    public function abi($abi)
+    public function initAbi(array|string|stdClass $abi):self
     {
         if (StringValidator::validate($abi) === false) {
             throw new InvalidArgumentException('Please make sure abi is valid.');
@@ -441,11 +240,11 @@ class Contract
     /**
      * new
      * Deploy a contruct with params.
-     * 
+     *
      * @param mixed
-     * @return void
+     * @return mixed
      */
-    public function new()
+    public function new():mixed
     {
         if (isset($this->constructor)) {
             $constructor = $this->constructor;
@@ -457,10 +256,10 @@ class Contract
                 throw new InvalidArgumentException('Please make sure you have put all constructor params and callback.');
             }
             if (is_callable($callback) !== true) {
-                throw new \InvalidArgumentException('The last param must be callback function.');
+                throw new InvalidArgumentException('The last param must be callback function.');
             }
             if (!isset($this->bytecode)) {
-                throw new \InvalidArgumentException('Please call bytecode($bytecode) before new().');
+                throw new InvalidArgumentException('Please call bytecode($bytecode) before new().');
             }
             $params = array_splice($arguments, 0, $input_count);
             $data = $this->ethabi->encodeParameters($constructor, $params);
@@ -478,16 +277,17 @@ class Contract
                 return call_user_func($callback, null, $transaction);
             });
         }
+        return null;
     }
 
     /**
      * send
      * Send function method.
-     * 
+     *
      * @param mixed
-     * @return void
+     * @return mixed
      */
-    public function send()
+    public function send():mixed
     {
         if (isset($this->functions)) {
             $arguments = func_get_args();
@@ -503,12 +303,12 @@ class Contract
                 if ($function["name"] === $method) {
                     $functions[] = $function;
                 }
-            };
+            }
             if (count($functions) < 1) {
                 throw new InvalidArgumentException('Please make sure the method exists.');
             }
             if (is_callable($callback) !== true) {
-                throw new \InvalidArgumentException('The last param must be callback function.');
+                throw new InvalidArgumentException('The last param must be callback function.');
             }
 
             // check the last one in arguments is transaction object
@@ -540,21 +340,21 @@ class Contract
                 if ($hasTransaction) {
                     if ($argsLen - 1 !== count($function['inputs'])) {
                         continue;
-                    } else {
-                        $paramsLen = $argsLen - 1;
                     }
+
+                    $paramsLen = $argsLen - 1;
                 } else {
                     if ($argsLen !== count($function['inputs'])) {
                         continue;
-                    } else {
-                        $paramsLen = $argsLen;
                     }
+
+                    $paramsLen = $argsLen;
                 }
                 try {
                     $params = array_splice($arguments, 0, $paramsLen);
                     $data = $this->ethabi->encodeParameters($function, $params);
                     $functionName = Utils::jsonMethodToString($function);
-                } catch (InvalidArgumentException $e) {
+                } catch (InvalidArgumentException) {
                     continue;
                 }
                 break;
@@ -573,6 +373,7 @@ class Contract
                 return call_user_func($callback, null, $transaction);
             });
         }
+        return null;
     }
 
     /**
@@ -580,9 +381,9 @@ class Contract
      * Call function method.
      *
      * @param mixed
-     * @return void
+     * @return mixed
      */
-    public function call()
+    public function call(): mixed
     {
         if (isset($this->functions)) {
             $arguments = func_get_args();
@@ -598,12 +399,12 @@ class Contract
                 if ($function["name"] === $method) {
                     $functions[] = $function;
                 }
-            };
+            }
             if (count($functions) < 1) {
                 throw new InvalidArgumentException('Please make sure the method exists.');
             }
             if (is_callable($callback) !== true) {
-                throw new \InvalidArgumentException('The last param must be callback function.');
+                throw new InvalidArgumentException('The last param must be callback function.');
             }
 
             // check the arguments
@@ -670,16 +471,17 @@ class Contract
                 return call_user_func($callback, null, $decodedTransaction);
             });
         }
+        return null;
     }
 
     /**
      * estimateGas
      * Estimate function gas.
-     * 
+     *
      * @param mixed
-     * @return void
+     * @return mixed
      */
-    public function estimateGas()
+    public function estimateGas():mixed
     {
         if (isset($this->functions) || isset($this->constructor)) {
             $arguments = func_get_args();
@@ -692,10 +494,10 @@ class Contract
                     throw new InvalidArgumentException('Please make sure you have put all constructor params and callback.');
                 }
                 if (is_callable($callback) !== true) {
-                    throw new \InvalidArgumentException('The last param must be callback function.');
+                    throw new InvalidArgumentException('The last param must be callback function.');
                 }
                 if (!isset($this->bytecode)) {
-                    throw new \InvalidArgumentException('Please call bytecode($bytecode) before estimateGas().');
+                    throw new InvalidArgumentException('Please call bytecode($bytecode) before estimateGas().');
                 }
                 $params = array_splice($arguments, 0, count($constructor['inputs']));
                 $data = $this->ethabi->encodeParameters($constructor, $params);
@@ -722,7 +524,7 @@ class Contract
                     throw new InvalidArgumentException('Please make sure the method exists.');
                 }
                 if (is_callable($callback) !== true) {
-                    throw new \InvalidArgumentException('The last param must be callback function.');
+                    throw new InvalidArgumentException('The last param must be callback function.');
                 }
     
                 // check the last one in arguments is transaction object
@@ -788,6 +590,7 @@ class Contract
                 return call_user_func($callback, null, $gas);
             });
         }
+        return null;
     }
 
     /**
@@ -799,9 +602,9 @@ class Contract
      * 3. Call sendRawTransaction.
      * 
      * @param mixed
-     * @return void
+     * @return string
      */
-    public function getData()
+    public function getData():string
     {
         if (isset($this->functions) || isset($this->constructor)) {
             $arguments = func_get_args();
@@ -814,7 +617,7 @@ class Contract
                     throw new InvalidArgumentException('Please make sure you have put all constructor params and callback.');
                 }
                 if (!isset($this->bytecode)) {
-                    throw new \InvalidArgumentException('Please call bytecode($bytecode) before getData().');
+                    throw new InvalidArgumentException('Please call bytecode($bytecode) before getData().');
                 }
                 $params = array_splice($arguments, 0, count($constructor['inputs']));
                 $data = $this->ethabi->encodeParameters($constructor, $params);
@@ -831,7 +634,7 @@ class Contract
                     if ($function["name"] === $method) {
                         $functions[] = $function;
                     }
-                };
+                }
                 if (count($functions) < 1) {
                     throw new InvalidArgumentException('Please make sure the method exists.');
                 }
@@ -846,7 +649,7 @@ class Contract
                     try {
                         $data = $this->ethabi->encodeParameters($function, $params);
                         $functionName = Utils::jsonMethodToString($function);
-                    } catch (InvalidArgumentException $e) {
+                    } catch (InvalidArgumentException ) {
                         continue;
                     }
                     break;
@@ -859,5 +662,6 @@ class Contract
             }
             return $functionData;
         }
+        return '';
     }
 }
