@@ -7,10 +7,7 @@ vendor/bin/phpstan -n
 ret=$?
 if [ $ret != 0 ]; then
   echo "phpstan error"
-  # make sure to stop ganache-cli
-  kill -9 $ganachecli_pid
-  echo "Kill ganache-cli"
-  return $ret
+  exit $ret
 fi
 
 # starting ganache
