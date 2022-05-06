@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2022-05-06
 
+- Implementation of Contract::getEventLogs() (thanks Nanolucas)
 - clearify examples
 - refactor contract
 

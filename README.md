@@ -184,6 +184,10 @@ $constructorData = $contract->bytecode($bytecode)->getData($param1,$param2,...);
 
 // get function data
 $functionData = $contract->at($contractAddress)->getData($functionName, $param1,$param2,...);
+
+//get event log data 
+//$fromBlock and $toBlock are optional, default to 'latest' and accept block numbers integers
+$events = $contract->getEventLogs($eventName, $fromBlock, $toBlock);
 ```
 
 # Assign value to outside scope(from callback scope to outside scope)
