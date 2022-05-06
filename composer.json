@@ -15,6 +15,7 @@
     ],
     "require": {
         "ext-mbstring": "*",
+        "ext-json": "*",
         "php": "^8.0|^8.1",
         "guzzlehttp/guzzle": "^7.4",
         "kornrunner/keccak": "^1.1",
