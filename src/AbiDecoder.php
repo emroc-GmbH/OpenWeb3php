@@ -97,8 +97,9 @@ class AbiDecoder
      * @param string $input
      * @return object
      */
-    public function decodeInput(string $input) : object
+    public function decodeInput(string $input) : ?object
     {
+        $retData = null;
         $abiItem = $this->methodIds[substr($input, 2, 8)];
         $types = array_column($abiItem->inputs, 'type');
 
